@@ -1,0 +1,4554 @@
+{
+  "manual_version": "0.1.0",
+  "utcp_version": "1.0.2",
+  "tools": [
+    {
+      "name": "outlook_list_mail_folders",
+      "description": "Liste les dossiers courrier de premier niveau (racine de la boîte) avec leurs compteurs totalItemCount et unreadItemCount et childFolderCount. Les sous-dossiers ne sont PAS inclus : descendre avec outlook_list_child_folders quand childFolderCount > 0. Pagination : Graph pagine à 10 éléments par défaut ; passer top=100 et enchaîner avec skip (ou skiptoken du nextLink). includeHiddenFolders=true ajoute les dossiers cachés.",
+      "tags": [
+        "courrier",
+        "dossier",
+        "lecture"
+      ],
+      "average_response_size": 6000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "top": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal d'éléments par page (1 à 100)."
+          },
+          "skip": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Nombre d'éléments à sauter (pagination : ajouter la taille de page précédente ; Graph renvoie @odata.nextLink absolu dont $skip/$skiptoken se recopient ici)."
+          },
+          "select": {
+            "type": "string",
+            "description": "Propriétés à renvoyer, séparées par des virgules (ex. id,displayName,childFolderCount,unreadItemCount,totalItemCount). Réduit fortement la taille de la réponse.",
+            "pattern": "^[A-Za-z0-9_@.,/]{1,500}$"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filtre OData (exclusif avec search), ex. displayName eq 'Archive'",
+            "maxLength": 1000
+          },
+          "includeHiddenFolders": {
+            "type": "string",
+            "description": "Inclure les dossiers cachés.",
+            "enum": [
+              "true",
+              "false"
+            ]
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/mailFolders",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        }
+      }
+    },
+    {
+      "name": "outlook_list_child_folders",
+      "description": "Liste les sous-dossiers directs d'un dossier courrier (un seul niveau ; pour un arbre complet, rappeler pour chaque enfant dont childFolderCount > 0). Pagination : Graph pagine à 10 éléments par défaut ; passer top=100 et enchaîner avec skip (ou skiptoken du nextLink). ",
+      "tags": [
+        "courrier",
+        "dossier",
+        "lecture"
+      ],
+      "average_response_size": 4000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "folderId": {
+            "type": "string",
+            "description": "Identifiant du dossier, ou nom connu : inbox, sentitems, drafts, deleteditems, archive, junkemail, outbox, msgfolderroot.",
+            "pattern": "^(inbox|sentitems|drafts|deleteditems|archive|junkemail|outbox|msgfolderroot|[A-Za-z0-9_=-]{1,512})$"
+          },
+          "top": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal d'éléments par page (1 à 100)."
+          },
+          "skip": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Nombre d'éléments à sauter (pagination : ajouter la taille de page précédente ; Graph renvoie @odata.nextLink absolu dont $skip/$skiptoken se recopient ici)."
+          },
+          "select": {
+            "type": "string",
+            "description": "Propriétés à renvoyer, séparées par des virgules (ex. id,displayName,childFolderCount,unreadItemCount,totalItemCount). Réduit fortement la taille de la réponse.",
+            "pattern": "^[A-Za-z0-9_@.,/]{1,500}$"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filtre OData (exclusif avec search), ex. displayName eq 'Factures'",
+            "maxLength": 1000
+          },
+          "includeHiddenFolders": {
+            "type": "string",
+            "description": "Inclure les dossiers cachés.",
+            "enum": [
+              "true",
+              "false"
+            ]
+          }
+        },
+        "required": [
+          "folderId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/mailFolders/{folderId}/childFolders",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        }
+      }
+    },
+    {
+      "name": "outlook_get_mail_folder",
+      "description": "Lit un dossier courrier : displayName, parentFolderId, childFolderCount, totalItemCount, unreadItemCount. Accepte un nom connu (inbox, sentitems, drafts, deleteditems, archive, junkemail).",
+      "tags": [
+        "courrier",
+        "dossier",
+        "lecture"
+      ],
+      "average_response_size": 500,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "folderId": {
+            "type": "string",
+            "description": "Identifiant du dossier, ou nom connu : inbox, sentitems, drafts, deleteditems, archive, junkemail, outbox, msgfolderroot.",
+            "pattern": "^(inbox|sentitems|drafts|deleteditems|archive|junkemail|outbox|msgfolderroot|[A-Za-z0-9_=-]{1,512})$"
+          },
+          "select": {
+            "type": "string",
+            "description": "Propriétés à renvoyer, séparées par des virgules (ex. displayName,totalItemCount,unreadItemCount). Réduit fortement la taille de la réponse.",
+            "pattern": "^[A-Za-z0-9_@.,/]{1,500}$"
+          }
+        },
+        "required": [
+          "folderId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/mailFolders/{folderId}",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        }
+      }
+    },
+    {
+      "name": "outlook_list_folder_messages",
+      "description": "Liste les messages d'un dossier précis (inbox, sentitems, drafts, deleteditems, archive, junkemail ou identifiant d'un sous-dossier), du plus récent au plus ancien par défaut si orderby=receivedDateTime desc. `search` et `filter` sont exclusifs sur les messages, et `search` ignore `orderby` (tri par pertinence). Pagination : Graph renvoie @odata.nextLink absolu ; relancer avec `skip` (ancienne valeur + taille de page) tant que le lien est présent. Utiliser select pour limiter la taille (sans bodyPreview/body si inutile).",
+      "tags": [
+        "courrier",
+        "dossier",
+        "lecture"
+      ],
+      "average_response_size": 40000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "folderId": {
+            "type": "string",
+            "description": "Identifiant du dossier, ou nom connu : inbox, sentitems, drafts, deleteditems, archive, junkemail, outbox, msgfolderroot.",
+            "pattern": "^(inbox|sentitems|drafts|deleteditems|archive|junkemail|outbox|msgfolderroot|[A-Za-z0-9_=-]{1,512})$"
+          },
+          "top": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal d'éléments par page (1 à 100)."
+          },
+          "skip": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Nombre d'éléments à sauter (pagination : ajouter la taille de page précédente ; Graph renvoie @odata.nextLink absolu dont $skip/$skiptoken se recopient ici)."
+          },
+          "select": {
+            "type": "string",
+            "description": "Propriétés à renvoyer, séparées par des virgules (ex. id,subject,from,receivedDateTime,isRead,bodyPreview,hasAttachments). Réduit fortement la taille de la réponse.",
+            "pattern": "^[A-Za-z0-9_@.,/]{1,500}$"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filtre OData (exclusif avec search), ex. isRead eq false",
+            "maxLength": 1000
+          },
+          "search": {
+            "type": "string",
+            "description": "Recherche KQL plein texte (exclusif avec filter), ex. \"facture\" ou from:dupont.",
+            "maxLength": 500
+          },
+          "orderby": {
+            "type": "string",
+            "description": "Tri OData, ex. receivedDateTime desc. Ignoré avec search.",
+            "pattern": "^[A-Za-z0-9/, ]{1,200}$",
+            "maxLength": 200
+          },
+          "count": {
+            "type": "string",
+            "description": "Renvoyer @odata.count.",
+            "enum": [
+              "true",
+              "false"
+            ]
+          },
+          "Prefer": {
+            "type": "string",
+            "description": "En-tête Prefer : type de corps renvoyé. Recommandé : outlook.body-content-type=\"text\" (bien moins de jetons que le HTML).",
+            "enum": [
+              "outlook.body-content-type=\"text\"",
+              "outlook.body-content-type=\"html\""
+            ]
+          }
+        },
+        "required": [
+          "folderId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/mailFolders/{folderId}/messages",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "header_fields": [
+          "Prefer"
+        ]
+      }
+    },
+    {
+      "name": "outlook_create_mail_folder",
+      "description": "Crée un dossier courrier à la racine de la boîte ; renvoie le dossier (id inclus).",
+      "tags": [
+        "courrier",
+        "dossier",
+        "ecriture"
+      ],
+      "average_response_size": 400,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "folder": {
+            "type": "object",
+            "description": "Dossier à créer.",
+            "properties": {
+              "displayName": {
+                "type": "string",
+                "description": "Nom du dossier.",
+                "minLength": 1,
+                "maxLength": 255
+              },
+              "isHidden": {
+                "type": "boolean",
+                "description": "Dossier caché."
+              }
+            },
+            "required": [
+              "displayName"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "folder"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/mailFolders",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "folder"
+      }
+    },
+    {
+      "name": "outlook_create_child_folder",
+      "description": "Crée un sous-dossier dans un dossier existant (nom connu ou identifiant) ; renvoie le sous-dossier (id inclus).",
+      "tags": [
+        "courrier",
+        "dossier",
+        "ecriture"
+      ],
+      "average_response_size": 400,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "folderId": {
+            "type": "string",
+            "description": "Identifiant du dossier, ou nom connu : inbox, sentitems, drafts, deleteditems, archive, junkemail, outbox, msgfolderroot.",
+            "pattern": "^(inbox|sentitems|drafts|deleteditems|archive|junkemail|outbox|msgfolderroot|[A-Za-z0-9_=-]{1,512})$"
+          },
+          "folder": {
+            "type": "object",
+            "description": "Sous-dossier à créer.",
+            "properties": {
+              "displayName": {
+                "type": "string",
+                "description": "Nom du dossier.",
+                "minLength": 1,
+                "maxLength": 255
+              },
+              "isHidden": {
+                "type": "boolean",
+                "description": "Dossier caché."
+              }
+            },
+            "required": [
+              "displayName"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "folderId",
+          "folder"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/mailFolders/{folderId}/childFolders",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "folder"
+      }
+    },
+    {
+      "name": "outlook_rename_mail_folder",
+      "description": "Renomme un dossier courrier (PATCH displayName). Les dossiers système (inbox...) ne se renomment pas.",
+      "tags": [
+        "courrier",
+        "dossier",
+        "ecriture"
+      ],
+      "average_response_size": 400,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "folderId": {
+            "type": "string",
+            "description": "Identifiant du dossier (pas un nom connu).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          },
+          "folder": {
+            "type": "object",
+            "description": "Modification.",
+            "properties": {
+              "displayName": {
+                "type": "string",
+                "description": "Nouveau nom.",
+                "minLength": 1,
+                "maxLength": 255
+              }
+            },
+            "required": [
+              "displayName"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "folderId",
+          "folder"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/mailFolders/{folderId}",
+        "http_method": "PATCH",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "folder"
+      }
+    },
+    {
+      "name": "outlook_delete_mail_folder",
+      "description": "Supprime un dossier courrier et son contenu (vers Éléments supprimés). Irréversible côté agent : confirmer avec l'utilisateur. Renvoie 204.",
+      "tags": [
+        "courrier",
+        "dossier",
+        "ecriture"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "folderId": {
+            "type": "string",
+            "description": "Identifiant du dossier (pas un nom connu).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          }
+        },
+        "required": [
+          "folderId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/mailFolders/{folderId}",
+        "http_method": "DELETE",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        }
+      }
+    },
+    {
+      "name": "outlook_move_message",
+      "description": "Déplace un message vers un dossier (nom connu comme archive/deleteditems/junkemail, ou identifiant). Renvoie le message déplacé, avec son NOUVEL identifiant : l'ancien n'est plus valable.",
+      "tags": [
+        "courrier",
+        "dossier",
+        "ecriture"
+      ],
+      "average_response_size": 800,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "description": "Identifiant Graph de l'objet (chaîne base64url, copiée telle quelle d'une réponse précédente).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          },
+          "move": {
+            "type": "object",
+            "description": "Destination.",
+            "properties": {
+              "destinationId": {
+                "type": "string",
+                "description": "Dossier de destination : identifiant ou nom connu.",
+                "pattern": "^(inbox|sentitems|drafts|deleteditems|archive|junkemail|outbox|msgfolderroot|[A-Za-z0-9_=-]{1,512})$"
+              }
+            },
+            "required": [
+              "destinationId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "messageId",
+          "move"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/messages/{messageId}/move",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "move"
+      }
+    },
+    {
+      "name": "outlook_copy_message",
+      "description": "Copie un message vers un dossier (nom connu ou identifiant) ; renvoie la copie avec son identifiant.",
+      "tags": [
+        "courrier",
+        "dossier",
+        "ecriture"
+      ],
+      "average_response_size": 800,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "description": "Identifiant Graph de l'objet (chaîne base64url, copiée telle quelle d'une réponse précédente).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          },
+          "copy": {
+            "type": "object",
+            "description": "Destination.",
+            "properties": {
+              "destinationId": {
+                "type": "string",
+                "description": "Dossier de destination : identifiant ou nom connu.",
+                "pattern": "^(inbox|sentitems|drafts|deleteditems|archive|junkemail|outbox|msgfolderroot|[A-Za-z0-9_=-]{1,512})$"
+              }
+            },
+            "required": [
+              "destinationId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "messageId",
+          "copy"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/messages/{messageId}/copy",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "copy"
+      }
+    },
+    {
+      "name": "outlook_folder_messages_delta",
+      "description": "Changements de messages d'un dossier (delta). 1er appel sans jeton : état complet puis, page après page, @odata.nextLink (recopier son skiptoken) jusqu'à @odata.deltaLink ; ce dernier donne le deltatoken à fournir au prochain tour pour ne recevoir que les messages ajoutés, modifiés ou supprimés (@removed). Les paramètres select/filter ne se donnent qu'au 1er appel.",
+      "tags": [
+        "courrier",
+        "dossier",
+        "lecture"
+      ],
+      "average_response_size": 40000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "folderId": {
+            "type": "string",
+            "description": "Identifiant du dossier, ou nom connu : inbox, sentitems, drafts, deleteditems, archive, junkemail, outbox, msgfolderroot.",
+            "pattern": "^(inbox|sentitems|drafts|deleteditems|archive|junkemail|outbox|msgfolderroot|[A-Za-z0-9_=-]{1,512})$"
+          },
+          "select": {
+            "type": "string",
+            "description": "Propriétés à renvoyer, séparées par des virgules (ex. id,subject,from,receivedDateTime,isRead). Réduit fortement la taille de la réponse.",
+            "pattern": "^[A-Za-z0-9_@.,/]{1,500}$"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filtre limité à receivedDateTime, ex. receivedDateTime ge 2026-11-01T00:00:00Z (1er appel seulement).",
+            "maxLength": 300
+          },
+          "skiptoken": {
+            "type": "string",
+            "description": "Jeton de page suivante : valeur du paramètre $skiptoken (ou skiptoken) de @odata.nextLink renvoyé par l'appel précédent.",
+            "pattern": "^[A-Za-z0-9_=+/.%-]{1,2000}$"
+          },
+          "deltatoken": {
+            "type": "string",
+            "description": "Valeur du $deltatoken de @odata.deltaLink du tour précédent.",
+            "pattern": "^[A-Za-z0-9_=+/.%-]{1,2000}$"
+          },
+          "Prefer": {
+            "type": "string",
+            "description": "En-tête Prefer : taille de page et type de corps, ex. odata.maxpagesize=50 ou outlook.body-content-type=\"text\" (séparer par une virgule).",
+            "pattern": "^[A-Za-z0-9_.=\"-]+(, ?[A-Za-z0-9_.=\"-]+)*$",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "folderId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/mailFolders/{folderId}/messages/delta",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "header_fields": [
+          "Prefer"
+        ]
+      }
+    },
+    {
+      "name": "outlook_list_messages",
+      "description": "Liste les messages de toute la boîte (tous dossiers confondus, dont les sous-dossiers), triés par défaut sans garantie : donner orderby=receivedDateTime desc. `search` et `filter` sont exclusifs sur les messages, et `search` ignore `orderby` (tri par pertinence). Pagination : Graph renvoie @odata.nextLink absolu ; relancer avec `skip` (ancienne valeur + taille de page) tant que le lien est présent. Pour un dossier précis, préférer outlook_list_folder_messages.",
+      "tags": [
+        "courrier",
+        "lecture"
+      ],
+      "average_response_size": 40000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "top": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal d'éléments par page (1 à 100)."
+          },
+          "skip": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Nombre d'éléments à sauter (pagination : ajouter la taille de page précédente ; Graph renvoie @odata.nextLink absolu dont $skip/$skiptoken se recopient ici)."
+          },
+          "select": {
+            "type": "string",
+            "description": "Propriétés à renvoyer, séparées par des virgules (ex. id,subject,from,receivedDateTime,isRead,parentFolderId,hasAttachments). Réduit fortement la taille de la réponse.",
+            "pattern": "^[A-Za-z0-9_@.,/]{1,500}$"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filtre OData (exclusif avec search), ex. isRead eq false and receivedDateTime ge 2026-11-01T00:00:00Z",
+            "maxLength": 1000
+          },
+          "search": {
+            "type": "string",
+            "description": "Recherche KQL plein texte (exclusif avec filter), ex. \"rapport\" ou subject:devis.",
+            "maxLength": 500
+          },
+          "orderby": {
+            "type": "string",
+            "description": "Tri OData, ex. receivedDateTime desc. Ignoré avec search.",
+            "pattern": "^[A-Za-z0-9/, ]{1,200}$",
+            "maxLength": 200
+          },
+          "count": {
+            "type": "string",
+            "description": "Renvoyer @odata.count.",
+            "enum": [
+              "true",
+              "false"
+            ]
+          },
+          "Prefer": {
+            "type": "string",
+            "description": "En-tête Prefer : type de corps renvoyé. Recommandé : outlook.body-content-type=\"text\" (bien moins de jetons que le HTML).",
+            "enum": [
+              "outlook.body-content-type=\"text\"",
+              "outlook.body-content-type=\"html\""
+            ]
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/messages",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "header_fields": [
+          "Prefer"
+        ]
+      }
+    },
+    {
+      "name": "outlook_search_messages",
+      "description": "Recherche plein texte (KQL) dans tous les messages de la boîte, sous-dossiers compris : mots, from:, to:, subject:, hasattachments:true, received>=2026-11-01. Résultats triés par pertinence (orderby ignoré, filter interdit). Pagination par `skiptoken` extrait de @odata.nextLink.",
+      "tags": [
+        "courrier",
+        "lecture"
+      ],
+      "average_response_size": 30000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "string",
+            "description": "Requête KQL, ex. \"facture\" ou from:dupont subject:devis.",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "top": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal d'éléments par page (1 à 100)."
+          },
+          "skiptoken": {
+            "type": "string",
+            "description": "Jeton de page suivante : valeur du paramètre $skiptoken (ou skiptoken) de @odata.nextLink renvoyé par l'appel précédent.",
+            "pattern": "^[A-Za-z0-9_=+/.%-]{1,2000}$"
+          },
+          "select": {
+            "type": "string",
+            "description": "Propriétés à renvoyer, séparées par des virgules (ex. id,subject,from,receivedDateTime,parentFolderId,bodyPreview). Réduit fortement la taille de la réponse.",
+            "pattern": "^[A-Za-z0-9_@.,/]{1,500}$"
+          },
+          "Prefer": {
+            "type": "string",
+            "description": "En-tête Prefer : type de corps renvoyé. Recommandé : outlook.body-content-type=\"text\" (bien moins de jetons que le HTML).",
+            "enum": [
+              "outlook.body-content-type=\"text\"",
+              "outlook.body-content-type=\"html\""
+            ]
+          }
+        },
+        "required": [
+          "search"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/messages",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "header_fields": [
+          "Prefer"
+        ]
+      }
+    },
+    {
+      "name": "outlook_get_message",
+      "description": "Lit un message complet (en-têtes, destinataires, corps, parentFolderId, conversationId). Passer Prefer=outlook.body-content-type=\"text\" pour un corps texte brut, bien plus économe que le HTML.",
+      "tags": [
+        "courrier",
+        "lecture"
+      ],
+      "average_response_size": 8000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "description": "Identifiant Graph de l'objet (chaîne base64url, copiée telle quelle d'une réponse précédente).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          },
+          "select": {
+            "type": "string",
+            "description": "Propriétés à renvoyer, séparées par des virgules (ex. id,subject,from,toRecipients,body,receivedDateTime). Réduit fortement la taille de la réponse.",
+            "pattern": "^[A-Za-z0-9_@.,/]{1,500}$"
+          },
+          "expand": {
+            "type": "string",
+            "description": "Relations à inclure (ex. attachments).",
+            "pattern": "^[A-Za-z0-9_@.,/()$= ]{1,200}$"
+          },
+          "Prefer": {
+            "type": "string",
+            "description": "En-tête Prefer : type de corps renvoyé. Recommandé : outlook.body-content-type=\"text\" (bien moins de jetons que le HTML).",
+            "enum": [
+              "outlook.body-content-type=\"text\"",
+              "outlook.body-content-type=\"html\""
+            ]
+          }
+        },
+        "required": [
+          "messageId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/messages/{messageId}",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "header_fields": [
+          "Prefer"
+        ]
+      }
+    },
+    {
+      "name": "outlook_list_attachments",
+      "description": "Liste les pièces jointes d'un message : id, name, contentType, size, isInline (sans contenu). Lire le contenu avec outlook_get_attachment.",
+      "tags": [
+        "courrier",
+        "lecture"
+      ],
+      "average_response_size": 2000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "description": "Identifiant Graph de l'objet (chaîne base64url, copiée telle quelle d'une réponse précédente).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          },
+          "select": {
+            "type": "string",
+            "description": "Propriétés à renvoyer, séparées par des virgules (ex. id,name,contentType,size,isInline). Réduit fortement la taille de la réponse.",
+            "pattern": "^[A-Za-z0-9_@.,/]{1,500}$"
+          }
+        },
+        "required": [
+          "messageId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/messages/{messageId}/attachments",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        }
+      }
+    },
+    {
+      "name": "outlook_get_attachment",
+      "description": "Lit une pièce jointe : métadonnées et, pour un fileAttachment, contentBytes en base64 (peut être très volumineux ; vérifier size avant).",
+      "tags": [
+        "courrier",
+        "lecture"
+      ],
+      "average_response_size": 100000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "description": "Identifiant Graph de l'objet (chaîne base64url, copiée telle quelle d'une réponse précédente).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          },
+          "attachmentId": {
+            "type": "string",
+            "description": "Identifiant Graph de l'objet (chaîne base64url, copiée telle quelle d'une réponse précédente).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          },
+          "select": {
+            "type": "string",
+            "description": "Propriétés à renvoyer, séparées par des virgules (ex. id,name,contentType,size,contentBytes). Réduit fortement la taille de la réponse.",
+            "pattern": "^[A-Za-z0-9_@.,/]{1,500}$"
+          }
+        },
+        "required": [
+          "messageId",
+          "attachmentId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/messages/{messageId}/attachments/{attachmentId}",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        }
+      }
+    },
+    {
+      "name": "outlook_create_draft",
+      "description": "Crée un brouillon (dans Brouillons), sans l'envoyer ; renvoie le message avec son id. Envoyer ensuite avec outlook_send_draft.",
+      "tags": [
+        "courrier",
+        "ecriture"
+      ],
+      "average_response_size": 1500,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "object",
+            "description": "Brouillon.",
+            "properties": {
+              "subject": {
+                "type": "string",
+                "description": "Objet.",
+                "maxLength": 512
+              },
+              "body": {
+                "type": "object",
+                "description": "Corps.",
+                "properties": {
+                  "contentType": {
+                    "type": "string",
+                    "description": "Format du corps.",
+                    "enum": [
+                      "Text",
+                      "HTML"
+                    ]
+                  },
+                  "content": {
+                    "type": "string",
+                    "description": "Contenu.",
+                    "maxLength": 4000000
+                  }
+                },
+                "required": [
+                  "contentType",
+                  "content"
+                ],
+                "additionalProperties": true
+              },
+              "toRecipients": {
+                "type": "array",
+                "description": "Destinataires.",
+                "items": {
+                  "type": "object",
+                  "description": "Destinataire.",
+                  "properties": {
+                    "emailAddress": {
+                      "type": "object",
+                      "description": "Adresse.",
+                      "properties": {
+                        "address": {
+                          "type": "string",
+                          "description": "Adresse e-mail.",
+                          "maxLength": 320
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Nom affiché.",
+                          "maxLength": 256
+                        }
+                      },
+                      "required": [
+                        "address"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": [
+                    "emailAddress"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "ccRecipients": {
+                "type": "array",
+                "description": "Copie.",
+                "items": {
+                  "type": "object",
+                  "description": "Destinataire.",
+                  "properties": {
+                    "emailAddress": {
+                      "type": "object",
+                      "description": "Adresse.",
+                      "properties": {
+                        "address": {
+                          "type": "string",
+                          "description": "Adresse e-mail.",
+                          "maxLength": 320
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Nom affiché.",
+                          "maxLength": 256
+                        }
+                      },
+                      "required": [
+                        "address"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": [
+                    "emailAddress"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "bccRecipients": {
+                "type": "array",
+                "description": "Copie cachée.",
+                "items": {
+                  "type": "object",
+                  "description": "Destinataire.",
+                  "properties": {
+                    "emailAddress": {
+                      "type": "object",
+                      "description": "Adresse.",
+                      "properties": {
+                        "address": {
+                          "type": "string",
+                          "description": "Adresse e-mail.",
+                          "maxLength": 320
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Nom affiché.",
+                          "maxLength": 256
+                        }
+                      },
+                      "required": [
+                        "address"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": [
+                    "emailAddress"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "replyTo": {
+                "type": "array",
+                "description": "Adresses de réponse.",
+                "items": {
+                  "type": "object",
+                  "description": "Destinataire.",
+                  "properties": {
+                    "emailAddress": {
+                      "type": "object",
+                      "description": "Adresse.",
+                      "properties": {
+                        "address": {
+                          "type": "string",
+                          "description": "Adresse e-mail.",
+                          "maxLength": 320
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Nom affiché.",
+                          "maxLength": 256
+                        }
+                      },
+                      "required": [
+                        "address"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": [
+                    "emailAddress"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "importance": {
+                "type": "string",
+                "description": "Importance.",
+                "enum": [
+                  "low",
+                  "normal",
+                  "high"
+                ]
+              },
+              "categories": {
+                "type": "array",
+                "description": "Catégories (noms de outlook_list_master_categories).",
+                "items": {
+                  "type": "string",
+                  "description": "Nom de catégorie.",
+                  "maxLength": 255
+                }
+              },
+              "isReadReceiptRequested": {
+                "type": "boolean",
+                "description": "Accusé de lecture."
+              },
+              "attachments": {
+                "type": "array",
+                "description": "Petites pièces jointes (≤ 3 Mio chacune).",
+                "items": {
+                  "type": "object",
+                  "description": "Pièce jointe fichier (≤ 3 Mio ; au-delà : upload session, non couvert).",
+                  "properties": {
+                    "@odata.type": {
+                      "type": "string",
+                      "description": "Toujours #microsoft.graph.fileAttachment.",
+                      "const": "#microsoft.graph.fileAttachment"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Nom du fichier.",
+                      "maxLength": 255
+                    },
+                    "contentType": {
+                      "type": "string",
+                      "description": "Type MIME.",
+                      "maxLength": 100
+                    },
+                    "contentBytes": {
+                      "type": "string",
+                      "description": "Contenu en base64."
+                    }
+                  },
+                  "required": [
+                    "@odata.type",
+                    "name",
+                    "contentBytes"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/messages",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "message"
+      }
+    },
+    {
+      "name": "outlook_update_message",
+      "description": "Modifie un message (PATCH) : isRead, flag.flagStatus (notFlagged, flagged, complete), categories, importance ; sur un brouillon aussi objet, corps et destinataires. Les messages reçus ne sont pas modifiables sur le fond.",
+      "tags": [
+        "courrier",
+        "ecriture"
+      ],
+      "average_response_size": 1500,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "description": "Identifiant Graph de l'objet (chaîne base64url, copiée telle quelle d'une réponse précédente).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          },
+          "modification": {
+            "type": "object",
+            "description": "Champs à modifier.",
+            "properties": {
+              "isRead": {
+                "type": "boolean",
+                "description": "Marquer lu / non lu."
+              },
+              "flag": {
+                "type": "object",
+                "description": "Indicateur.",
+                "properties": {
+                  "flagStatus": {
+                    "type": "string",
+                    "description": "État.",
+                    "enum": [
+                      "notFlagged",
+                      "flagged",
+                      "complete"
+                    ]
+                  }
+                },
+                "additionalProperties": true
+              },
+              "categories": {
+                "type": "array",
+                "description": "Catégories (noms de outlook_list_master_categories).",
+                "items": {
+                  "type": "string",
+                  "description": "Nom de catégorie.",
+                  "maxLength": 255
+                }
+              },
+              "importance": {
+                "type": "string",
+                "description": "Importance.",
+                "enum": [
+                  "low",
+                  "normal",
+                  "high"
+                ]
+              },
+              "subject": {
+                "type": "string",
+                "description": "Objet.",
+                "maxLength": 512
+              },
+              "body": {
+                "type": "object",
+                "description": "Corps.",
+                "properties": {
+                  "contentType": {
+                    "type": "string",
+                    "description": "Format du corps.",
+                    "enum": [
+                      "Text",
+                      "HTML"
+                    ]
+                  },
+                  "content": {
+                    "type": "string",
+                    "description": "Contenu.",
+                    "maxLength": 4000000
+                  }
+                },
+                "required": [
+                  "contentType",
+                  "content"
+                ],
+                "additionalProperties": true
+              },
+              "toRecipients": {
+                "type": "array",
+                "description": "Destinataires.",
+                "items": {
+                  "type": "object",
+                  "description": "Destinataire.",
+                  "properties": {
+                    "emailAddress": {
+                      "type": "object",
+                      "description": "Adresse.",
+                      "properties": {
+                        "address": {
+                          "type": "string",
+                          "description": "Adresse e-mail.",
+                          "maxLength": 320
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Nom affiché.",
+                          "maxLength": 256
+                        }
+                      },
+                      "required": [
+                        "address"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": [
+                    "emailAddress"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "ccRecipients": {
+                "type": "array",
+                "description": "Copie.",
+                "items": {
+                  "type": "object",
+                  "description": "Destinataire.",
+                  "properties": {
+                    "emailAddress": {
+                      "type": "object",
+                      "description": "Adresse.",
+                      "properties": {
+                        "address": {
+                          "type": "string",
+                          "description": "Adresse e-mail.",
+                          "maxLength": 320
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Nom affiché.",
+                          "maxLength": 256
+                        }
+                      },
+                      "required": [
+                        "address"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": [
+                    "emailAddress"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "bccRecipients": {
+                "type": "array",
+                "description": "Copie cachée.",
+                "items": {
+                  "type": "object",
+                  "description": "Destinataire.",
+                  "properties": {
+                    "emailAddress": {
+                      "type": "object",
+                      "description": "Adresse.",
+                      "properties": {
+                        "address": {
+                          "type": "string",
+                          "description": "Adresse e-mail.",
+                          "maxLength": 320
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Nom affiché.",
+                          "maxLength": 256
+                        }
+                      },
+                      "required": [
+                        "address"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": [
+                    "emailAddress"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "replyTo": {
+                "type": "array",
+                "description": "Adresses de réponse.",
+                "items": {
+                  "type": "object",
+                  "description": "Destinataire.",
+                  "properties": {
+                    "emailAddress": {
+                      "type": "object",
+                      "description": "Adresse.",
+                      "properties": {
+                        "address": {
+                          "type": "string",
+                          "description": "Adresse e-mail.",
+                          "maxLength": 320
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Nom affiché.",
+                          "maxLength": 256
+                        }
+                      },
+                      "required": [
+                        "address"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": [
+                    "emailAddress"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "isReadReceiptRequested": {
+                "type": "boolean",
+                "description": "Accusé de lecture."
+              },
+              "attachments": {
+                "type": "array",
+                "description": "Petites pièces jointes (≤ 3 Mio chacune).",
+                "items": {
+                  "type": "object",
+                  "description": "Pièce jointe fichier (≤ 3 Mio ; au-delà : upload session, non couvert).",
+                  "properties": {
+                    "@odata.type": {
+                      "type": "string",
+                      "description": "Toujours #microsoft.graph.fileAttachment.",
+                      "const": "#microsoft.graph.fileAttachment"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Nom du fichier.",
+                      "maxLength": 255
+                    },
+                    "contentType": {
+                      "type": "string",
+                      "description": "Type MIME.",
+                      "maxLength": 100
+                    },
+                    "contentBytes": {
+                      "type": "string",
+                      "description": "Contenu en base64."
+                    }
+                  },
+                  "required": [
+                    "@odata.type",
+                    "name",
+                    "contentBytes"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "messageId",
+          "modification"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/messages/{messageId}",
+        "http_method": "PATCH",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "modification"
+      }
+    },
+    {
+      "name": "outlook_send_draft",
+      "description": "ENVOIE un brouillon existant (le message part réellement) ; renvoie 202 sans corps. Confirmer le texte avec l'utilisateur avant.",
+      "tags": [
+        "courrier",
+        "envoi",
+        "ecriture"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "description": "Identifiant du brouillon.",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          },
+          "body": {
+            "type": "object",
+            "description": "Corps vide : toujours {} (aucun champ).",
+            "properties": {},
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "messageId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/messages/{messageId}/send",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "body"
+      }
+    },
+    {
+      "name": "outlook_send_mail",
+      "description": "ENVOIE directement un message (part réellement) ; renvoie 202 sans corps. Confirmer destinataires et texte avec l'utilisateur avant. saveToSentItems=false évite la copie dans Éléments envoyés.",
+      "tags": [
+        "courrier",
+        "envoi",
+        "ecriture"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "mail": {
+            "type": "object",
+            "description": "Envoi.",
+            "properties": {
+              "message": {
+                "type": "object",
+                "description": "Message à envoyer.",
+                "properties": {
+                  "subject": {
+                    "type": "string",
+                    "description": "Objet.",
+                    "maxLength": 512
+                  },
+                  "body": {
+                    "type": "object",
+                    "description": "Corps.",
+                    "properties": {
+                      "contentType": {
+                        "type": "string",
+                        "description": "Format du corps.",
+                        "enum": [
+                          "Text",
+                          "HTML"
+                        ]
+                      },
+                      "content": {
+                        "type": "string",
+                        "description": "Contenu.",
+                        "maxLength": 4000000
+                      }
+                    },
+                    "required": [
+                      "contentType",
+                      "content"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "toRecipients": {
+                    "type": "array",
+                    "description": "Destinataires.",
+                    "items": {
+                      "type": "object",
+                      "description": "Destinataire.",
+                      "properties": {
+                        "emailAddress": {
+                          "type": "object",
+                          "description": "Adresse.",
+                          "properties": {
+                            "address": {
+                              "type": "string",
+                              "description": "Adresse e-mail.",
+                              "maxLength": 320
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Nom affiché.",
+                              "maxLength": 256
+                            }
+                          },
+                          "required": [
+                            "address"
+                          ],
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "emailAddress"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "ccRecipients": {
+                    "type": "array",
+                    "description": "Copie.",
+                    "items": {
+                      "type": "object",
+                      "description": "Destinataire.",
+                      "properties": {
+                        "emailAddress": {
+                          "type": "object",
+                          "description": "Adresse.",
+                          "properties": {
+                            "address": {
+                              "type": "string",
+                              "description": "Adresse e-mail.",
+                              "maxLength": 320
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Nom affiché.",
+                              "maxLength": 256
+                            }
+                          },
+                          "required": [
+                            "address"
+                          ],
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "emailAddress"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "bccRecipients": {
+                    "type": "array",
+                    "description": "Copie cachée.",
+                    "items": {
+                      "type": "object",
+                      "description": "Destinataire.",
+                      "properties": {
+                        "emailAddress": {
+                          "type": "object",
+                          "description": "Adresse.",
+                          "properties": {
+                            "address": {
+                              "type": "string",
+                              "description": "Adresse e-mail.",
+                              "maxLength": 320
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Nom affiché.",
+                              "maxLength": 256
+                            }
+                          },
+                          "required": [
+                            "address"
+                          ],
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "emailAddress"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "replyTo": {
+                    "type": "array",
+                    "description": "Adresses de réponse.",
+                    "items": {
+                      "type": "object",
+                      "description": "Destinataire.",
+                      "properties": {
+                        "emailAddress": {
+                          "type": "object",
+                          "description": "Adresse.",
+                          "properties": {
+                            "address": {
+                              "type": "string",
+                              "description": "Adresse e-mail.",
+                              "maxLength": 320
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Nom affiché.",
+                              "maxLength": 256
+                            }
+                          },
+                          "required": [
+                            "address"
+                          ],
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "emailAddress"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "importance": {
+                    "type": "string",
+                    "description": "Importance.",
+                    "enum": [
+                      "low",
+                      "normal",
+                      "high"
+                    ]
+                  },
+                  "categories": {
+                    "type": "array",
+                    "description": "Catégories (noms de outlook_list_master_categories).",
+                    "items": {
+                      "type": "string",
+                      "description": "Nom de catégorie.",
+                      "maxLength": 255
+                    }
+                  },
+                  "isReadReceiptRequested": {
+                    "type": "boolean",
+                    "description": "Accusé de lecture."
+                  },
+                  "attachments": {
+                    "type": "array",
+                    "description": "Petites pièces jointes (≤ 3 Mio chacune).",
+                    "items": {
+                      "type": "object",
+                      "description": "Pièce jointe fichier (≤ 3 Mio ; au-delà : upload session, non couvert).",
+                      "properties": {
+                        "@odata.type": {
+                          "type": "string",
+                          "description": "Toujours #microsoft.graph.fileAttachment.",
+                          "const": "#microsoft.graph.fileAttachment"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Nom du fichier.",
+                          "maxLength": 255
+                        },
+                        "contentType": {
+                          "type": "string",
+                          "description": "Type MIME.",
+                          "maxLength": 100
+                        },
+                        "contentBytes": {
+                          "type": "string",
+                          "description": "Contenu en base64."
+                        }
+                      },
+                      "required": [
+                        "@odata.type",
+                        "name",
+                        "contentBytes"
+                      ],
+                      "additionalProperties": true
+                    }
+                  }
+                },
+                "required": [
+                  "subject",
+                  "body",
+                  "toRecipients"
+                ],
+                "additionalProperties": true
+              },
+              "saveToSentItems": {
+                "type": "boolean",
+                "description": "Enregistrer dans Éléments envoyés (défaut true)."
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "mail"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/sendMail",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "mail"
+      }
+    },
+    {
+      "name": "outlook_reply_message",
+      "description": "ENVOIE une réponse à l'expéditeur d'un message (part réellement) ; 202 sans corps. Confirmer le texte avant.",
+      "tags": [
+        "courrier",
+        "envoi",
+        "ecriture"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "description": "Identifiant Graph de l'objet (chaîne base64url, copiée telle quelle d'une réponse précédente).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          },
+          "reply": {
+            "type": "object",
+            "description": "Réponse.",
+            "properties": {
+              "comment": {
+                "type": "string",
+                "description": "Texte ajouté en tête de la réponse.",
+                "maxLength": 100000
+              },
+              "message": {
+                "type": "object",
+                "description": "Surcharges optionnelles du message (destinataires, objet...).",
+                "properties": {
+                  "subject": {
+                    "type": "string",
+                    "description": "Objet.",
+                    "maxLength": 512
+                  },
+                  "body": {
+                    "type": "object",
+                    "description": "Corps.",
+                    "properties": {
+                      "contentType": {
+                        "type": "string",
+                        "description": "Format du corps.",
+                        "enum": [
+                          "Text",
+                          "HTML"
+                        ]
+                      },
+                      "content": {
+                        "type": "string",
+                        "description": "Contenu.",
+                        "maxLength": 4000000
+                      }
+                    },
+                    "required": [
+                      "contentType",
+                      "content"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "toRecipients": {
+                    "type": "array",
+                    "description": "Destinataires.",
+                    "items": {
+                      "type": "object",
+                      "description": "Destinataire.",
+                      "properties": {
+                        "emailAddress": {
+                          "type": "object",
+                          "description": "Adresse.",
+                          "properties": {
+                            "address": {
+                              "type": "string",
+                              "description": "Adresse e-mail.",
+                              "maxLength": 320
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Nom affiché.",
+                              "maxLength": 256
+                            }
+                          },
+                          "required": [
+                            "address"
+                          ],
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "emailAddress"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "ccRecipients": {
+                    "type": "array",
+                    "description": "Copie.",
+                    "items": {
+                      "type": "object",
+                      "description": "Destinataire.",
+                      "properties": {
+                        "emailAddress": {
+                          "type": "object",
+                          "description": "Adresse.",
+                          "properties": {
+                            "address": {
+                              "type": "string",
+                              "description": "Adresse e-mail.",
+                              "maxLength": 320
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Nom affiché.",
+                              "maxLength": 256
+                            }
+                          },
+                          "required": [
+                            "address"
+                          ],
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "emailAddress"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "bccRecipients": {
+                    "type": "array",
+                    "description": "Copie cachée.",
+                    "items": {
+                      "type": "object",
+                      "description": "Destinataire.",
+                      "properties": {
+                        "emailAddress": {
+                          "type": "object",
+                          "description": "Adresse.",
+                          "properties": {
+                            "address": {
+                              "type": "string",
+                              "description": "Adresse e-mail.",
+                              "maxLength": 320
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Nom affiché.",
+                              "maxLength": 256
+                            }
+                          },
+                          "required": [
+                            "address"
+                          ],
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "emailAddress"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "replyTo": {
+                    "type": "array",
+                    "description": "Adresses de réponse.",
+                    "items": {
+                      "type": "object",
+                      "description": "Destinataire.",
+                      "properties": {
+                        "emailAddress": {
+                          "type": "object",
+                          "description": "Adresse.",
+                          "properties": {
+                            "address": {
+                              "type": "string",
+                              "description": "Adresse e-mail.",
+                              "maxLength": 320
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Nom affiché.",
+                              "maxLength": 256
+                            }
+                          },
+                          "required": [
+                            "address"
+                          ],
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "emailAddress"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "importance": {
+                    "type": "string",
+                    "description": "Importance.",
+                    "enum": [
+                      "low",
+                      "normal",
+                      "high"
+                    ]
+                  },
+                  "categories": {
+                    "type": "array",
+                    "description": "Catégories (noms de outlook_list_master_categories).",
+                    "items": {
+                      "type": "string",
+                      "description": "Nom de catégorie.",
+                      "maxLength": 255
+                    }
+                  },
+                  "isReadReceiptRequested": {
+                    "type": "boolean",
+                    "description": "Accusé de lecture."
+                  },
+                  "attachments": {
+                    "type": "array",
+                    "description": "Petites pièces jointes (≤ 3 Mio chacune).",
+                    "items": {
+                      "type": "object",
+                      "description": "Pièce jointe fichier (≤ 3 Mio ; au-delà : upload session, non couvert).",
+                      "properties": {
+                        "@odata.type": {
+                          "type": "string",
+                          "description": "Toujours #microsoft.graph.fileAttachment.",
+                          "const": "#microsoft.graph.fileAttachment"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Nom du fichier.",
+                          "maxLength": 255
+                        },
+                        "contentType": {
+                          "type": "string",
+                          "description": "Type MIME.",
+                          "maxLength": 100
+                        },
+                        "contentBytes": {
+                          "type": "string",
+                          "description": "Contenu en base64."
+                        }
+                      },
+                      "required": [
+                        "@odata.type",
+                        "name",
+                        "contentBytes"
+                      ],
+                      "additionalProperties": true
+                    }
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "messageId",
+          "reply"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/messages/{messageId}/reply",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "reply"
+      }
+    },
+    {
+      "name": "outlook_reply_all_message",
+      "description": "ENVOIE une réponse à tous les destinataires d'un message (part réellement) ; 202 sans corps. Confirmer le texte avant.",
+      "tags": [
+        "courrier",
+        "envoi",
+        "ecriture"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "description": "Identifiant Graph de l'objet (chaîne base64url, copiée telle quelle d'une réponse précédente).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          },
+          "reply": {
+            "type": "object",
+            "description": "Réponse.",
+            "properties": {
+              "comment": {
+                "type": "string",
+                "description": "Texte ajouté en tête de la réponse.",
+                "maxLength": 100000
+              },
+              "message": {
+                "type": "object",
+                "description": "Surcharges optionnelles du message (destinataires, objet...).",
+                "properties": {
+                  "subject": {
+                    "type": "string",
+                    "description": "Objet.",
+                    "maxLength": 512
+                  },
+                  "body": {
+                    "type": "object",
+                    "description": "Corps.",
+                    "properties": {
+                      "contentType": {
+                        "type": "string",
+                        "description": "Format du corps.",
+                        "enum": [
+                          "Text",
+                          "HTML"
+                        ]
+                      },
+                      "content": {
+                        "type": "string",
+                        "description": "Contenu.",
+                        "maxLength": 4000000
+                      }
+                    },
+                    "required": [
+                      "contentType",
+                      "content"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "toRecipients": {
+                    "type": "array",
+                    "description": "Destinataires.",
+                    "items": {
+                      "type": "object",
+                      "description": "Destinataire.",
+                      "properties": {
+                        "emailAddress": {
+                          "type": "object",
+                          "description": "Adresse.",
+                          "properties": {
+                            "address": {
+                              "type": "string",
+                              "description": "Adresse e-mail.",
+                              "maxLength": 320
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Nom affiché.",
+                              "maxLength": 256
+                            }
+                          },
+                          "required": [
+                            "address"
+                          ],
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "emailAddress"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "ccRecipients": {
+                    "type": "array",
+                    "description": "Copie.",
+                    "items": {
+                      "type": "object",
+                      "description": "Destinataire.",
+                      "properties": {
+                        "emailAddress": {
+                          "type": "object",
+                          "description": "Adresse.",
+                          "properties": {
+                            "address": {
+                              "type": "string",
+                              "description": "Adresse e-mail.",
+                              "maxLength": 320
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Nom affiché.",
+                              "maxLength": 256
+                            }
+                          },
+                          "required": [
+                            "address"
+                          ],
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "emailAddress"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "bccRecipients": {
+                    "type": "array",
+                    "description": "Copie cachée.",
+                    "items": {
+                      "type": "object",
+                      "description": "Destinataire.",
+                      "properties": {
+                        "emailAddress": {
+                          "type": "object",
+                          "description": "Adresse.",
+                          "properties": {
+                            "address": {
+                              "type": "string",
+                              "description": "Adresse e-mail.",
+                              "maxLength": 320
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Nom affiché.",
+                              "maxLength": 256
+                            }
+                          },
+                          "required": [
+                            "address"
+                          ],
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "emailAddress"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "replyTo": {
+                    "type": "array",
+                    "description": "Adresses de réponse.",
+                    "items": {
+                      "type": "object",
+                      "description": "Destinataire.",
+                      "properties": {
+                        "emailAddress": {
+                          "type": "object",
+                          "description": "Adresse.",
+                          "properties": {
+                            "address": {
+                              "type": "string",
+                              "description": "Adresse e-mail.",
+                              "maxLength": 320
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Nom affiché.",
+                              "maxLength": 256
+                            }
+                          },
+                          "required": [
+                            "address"
+                          ],
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "emailAddress"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "importance": {
+                    "type": "string",
+                    "description": "Importance.",
+                    "enum": [
+                      "low",
+                      "normal",
+                      "high"
+                    ]
+                  },
+                  "categories": {
+                    "type": "array",
+                    "description": "Catégories (noms de outlook_list_master_categories).",
+                    "items": {
+                      "type": "string",
+                      "description": "Nom de catégorie.",
+                      "maxLength": 255
+                    }
+                  },
+                  "isReadReceiptRequested": {
+                    "type": "boolean",
+                    "description": "Accusé de lecture."
+                  },
+                  "attachments": {
+                    "type": "array",
+                    "description": "Petites pièces jointes (≤ 3 Mio chacune).",
+                    "items": {
+                      "type": "object",
+                      "description": "Pièce jointe fichier (≤ 3 Mio ; au-delà : upload session, non couvert).",
+                      "properties": {
+                        "@odata.type": {
+                          "type": "string",
+                          "description": "Toujours #microsoft.graph.fileAttachment.",
+                          "const": "#microsoft.graph.fileAttachment"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Nom du fichier.",
+                          "maxLength": 255
+                        },
+                        "contentType": {
+                          "type": "string",
+                          "description": "Type MIME.",
+                          "maxLength": 100
+                        },
+                        "contentBytes": {
+                          "type": "string",
+                          "description": "Contenu en base64."
+                        }
+                      },
+                      "required": [
+                        "@odata.type",
+                        "name",
+                        "contentBytes"
+                      ],
+                      "additionalProperties": true
+                    }
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "messageId",
+          "reply"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/messages/{messageId}/replyAll",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "reply"
+      }
+    },
+    {
+      "name": "outlook_forward_message",
+      "description": "ENVOIE le transfert d'un message à de nouveaux destinataires (part réellement) ; 202 sans corps. Confirmer destinataires et texte avant.",
+      "tags": [
+        "courrier",
+        "envoi",
+        "ecriture"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "description": "Identifiant Graph de l'objet (chaîne base64url, copiée telle quelle d'une réponse précédente).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          },
+          "forward": {
+            "type": "object",
+            "description": "Transfert.",
+            "properties": {
+              "comment": {
+                "type": "string",
+                "description": "Texte ajouté en tête.",
+                "maxLength": 100000
+              },
+              "toRecipients": {
+                "type": "array",
+                "description": "Destinataires du transfert.",
+                "items": {
+                  "type": "object",
+                  "description": "Destinataire.",
+                  "properties": {
+                    "emailAddress": {
+                      "type": "object",
+                      "description": "Adresse.",
+                      "properties": {
+                        "address": {
+                          "type": "string",
+                          "description": "Adresse e-mail.",
+                          "maxLength": 320
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Nom affiché.",
+                          "maxLength": 256
+                        }
+                      },
+                      "required": [
+                        "address"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": [
+                    "emailAddress"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "toRecipients"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "messageId",
+          "forward"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/messages/{messageId}/forward",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "forward"
+      }
+    },
+    {
+      "name": "outlook_delete_message",
+      "description": "Supprime un message (déplacé dans Éléments supprimés) ; 204. Pas d'opération Graph pour « tout marquer lu » sur un dossier : lister puis outlook_update_message message par message.",
+      "tags": [
+        "courrier",
+        "ecriture"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "description": "Identifiant Graph de l'objet (chaîne base64url, copiée telle quelle d'une réponse précédente).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          }
+        },
+        "required": [
+          "messageId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/messages/{messageId}",
+        "http_method": "DELETE",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        }
+      }
+    },
+    {
+      "name": "outlook_list_calendars",
+      "description": "Liste les calendriers de l'utilisateur (id, name, canEdit, owner, isDefaultCalendar).",
+      "tags": [
+        "calendrier",
+        "lecture"
+      ],
+      "average_response_size": 2000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "top": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal d'éléments par page (1 à 100)."
+          },
+          "skip": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Nombre d'éléments à sauter (pagination : ajouter la taille de page précédente ; Graph renvoie @odata.nextLink absolu dont $skip/$skiptoken se recopient ici)."
+          },
+          "select": {
+            "type": "string",
+            "description": "Propriétés à renvoyer, séparées par des virgules (ex. id,name,canEdit,owner). Réduit fortement la taille de la réponse.",
+            "pattern": "^[A-Za-z0-9_@.,/]{1,500}$"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/calendars",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        }
+      }
+    },
+    {
+      "name": "outlook_calendar_view",
+      "description": "Événements du calendrier par défaut sur une période, séries déroulées en occurrences (la vue à utiliser pour « mon agenda de la semaine »). startDateTime et endDateTime obligatoires, ISO 8601 avec décalage (ex. 2026-11-09T00:00:00+01:00 ; sans décalage = UTC). Pagination : recopier le $skiptoken de @odata.nextLink dans `skiptoken`. Prefer outlook.timezone=\"Europe/Paris\" pour des heures locales.",
+      "tags": [
+        "calendrier",
+        "lecture"
+      ],
+      "average_response_size": 30000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "startDateTime": {
+            "type": "string",
+            "description": "Début, ISO 8601.",
+            "pattern": "^[0-9T:.+Z-]{10,40}$"
+          },
+          "endDateTime": {
+            "type": "string",
+            "description": "Fin, ISO 8601.",
+            "pattern": "^[0-9T:.+Z-]{10,40}$"
+          },
+          "top": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "description": "Nombre maximal d'éléments par page (1 à 1000)."
+          },
+          "skiptoken": {
+            "type": "string",
+            "description": "Jeton de page suivante : valeur du paramètre $skiptoken (ou skiptoken) de @odata.nextLink renvoyé par l'appel précédent.",
+            "pattern": "^[A-Za-z0-9_=+/.%-]{1,2000}$"
+          },
+          "select": {
+            "type": "string",
+            "description": "Propriétés à renvoyer, séparées par des virgules (ex. id,subject,start,end,location,organizer,isAllDay,showAs). Réduit fortement la taille de la réponse.",
+            "pattern": "^[A-Za-z0-9_@.,/]{1,500}$"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filtre OData (exclusif avec search), ex. showAs eq 'busy'",
+            "maxLength": 1000
+          },
+          "orderby": {
+            "type": "string",
+            "description": "Tri OData, ex. start/dateTime. Ignoré avec search.",
+            "pattern": "^[A-Za-z0-9/, ]{1,200}$",
+            "maxLength": 200
+          },
+          "Prefer": {
+            "type": "string",
+            "description": "En-tête Prefer : fuseau des dates renvoyées, ex. outlook.timezone=\"Europe/Paris\" (sinon UTC).",
+            "pattern": "^outlook\\.timezone=\"[A-Za-z0-9_/ +.-]{1,80}\"$",
+            "examples": [
+              "outlook.timezone=\"Europe/Paris\""
+            ]
+          }
+        },
+        "required": [
+          "startDateTime",
+          "endDateTime"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/calendar/calendarView",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "header_fields": [
+          "Prefer"
+        ]
+      }
+    },
+    {
+      "name": "outlook_list_events",
+      "description": "Liste les événements du calendrier par défaut en tant qu'objets stockés (séries NON déroulées : pour une période, préférer outlook_calendar_view). Pagination par `skip`.",
+      "tags": [
+        "calendrier",
+        "lecture"
+      ],
+      "average_response_size": 30000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "top": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal d'éléments par page (1 à 100)."
+          },
+          "skip": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Nombre d'éléments à sauter (pagination : ajouter la taille de page précédente ; Graph renvoie @odata.nextLink absolu dont $skip/$skiptoken se recopient ici)."
+          },
+          "select": {
+            "type": "string",
+            "description": "Propriétés à renvoyer, séparées par des virgules (ex. id,subject,start,end,recurrence). Réduit fortement la taille de la réponse.",
+            "pattern": "^[A-Za-z0-9_@.,/]{1,500}$"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filtre OData (exclusif avec search), ex. start/dateTime ge '2026-11-01T00:00:00'",
+            "maxLength": 1000
+          },
+          "orderby": {
+            "type": "string",
+            "description": "Tri OData, ex. start/dateTime. Ignoré avec search.",
+            "pattern": "^[A-Za-z0-9/, ]{1,200}$",
+            "maxLength": 200
+          },
+          "Prefer": {
+            "type": "string",
+            "description": "En-tête Prefer : fuseau des dates renvoyées, ex. outlook.timezone=\"Europe/Paris\" (sinon UTC).",
+            "pattern": "^outlook\\.timezone=\"[A-Za-z0-9_/ +.-]{1,80}\"$",
+            "examples": [
+              "outlook.timezone=\"Europe/Paris\""
+            ]
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/events",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "header_fields": [
+          "Prefer"
+        ]
+      }
+    },
+    {
+      "name": "outlook_get_event",
+      "description": "Lit un événement (participants, lieu, corps, récurrence, lien de réunion en ligne).",
+      "tags": [
+        "calendrier",
+        "lecture"
+      ],
+      "average_response_size": 3000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "Identifiant Graph de l'objet (chaîne base64url, copiée telle quelle d'une réponse précédente).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          },
+          "select": {
+            "type": "string",
+            "description": "Propriétés à renvoyer, séparées par des virgules (ex. id,subject,start,end,attendees,body,location). Réduit fortement la taille de la réponse.",
+            "pattern": "^[A-Za-z0-9_@.,/]{1,500}$"
+          },
+          "Prefer": {
+            "type": "string",
+            "description": "En-tête Prefer : fuseau des dates renvoyées, ex. outlook.timezone=\"Europe/Paris\" (sinon UTC).",
+            "pattern": "^outlook\\.timezone=\"[A-Za-z0-9_/ +.-]{1,80}\"$",
+            "examples": [
+              "outlook.timezone=\"Europe/Paris\""
+            ]
+          }
+        },
+        "required": [
+          "eventId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/events/{eventId}",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "header_fields": [
+          "Prefer"
+        ]
+      }
+    },
+    {
+      "name": "outlook_create_event",
+      "description": "Crée un événement dans le calendrier par défaut. Avec des participants, Outlook ENVOIE les invitations (tag envoi). start et end portent dateTime + timeZone.",
+      "tags": [
+        "calendrier",
+        "envoi",
+        "ecriture"
+      ],
+      "average_response_size": 3000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "object",
+            "description": "Événement.",
+            "properties": {
+              "subject": {
+                "type": "string",
+                "description": "Titre.",
+                "maxLength": 512
+              },
+              "body": {
+                "type": "object",
+                "description": "Corps.",
+                "properties": {
+                  "contentType": {
+                    "type": "string",
+                    "description": "Format du corps.",
+                    "enum": [
+                      "Text",
+                      "HTML"
+                    ]
+                  },
+                  "content": {
+                    "type": "string",
+                    "description": "Contenu.",
+                    "maxLength": 4000000
+                  }
+                },
+                "required": [
+                  "contentType",
+                  "content"
+                ],
+                "additionalProperties": true
+              },
+              "start": {
+                "type": "object",
+                "description": "Début.",
+                "properties": {
+                  "dateTime": {
+                    "type": "string",
+                    "description": "Date-heure locale sans décalage, ex. 2026-11-09T14:00:00.",
+                    "pattern": "^[0-9T:.-]{10,40}$"
+                  },
+                  "timeZone": {
+                    "type": "string",
+                    "description": "Fuseau, ex. Europe/Paris ou UTC.",
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "dateTime",
+                  "timeZone"
+                ],
+                "additionalProperties": true
+              },
+              "end": {
+                "type": "object",
+                "description": "Fin.",
+                "properties": {
+                  "dateTime": {
+                    "type": "string",
+                    "description": "Date-heure locale sans décalage, ex. 2026-11-09T14:00:00.",
+                    "pattern": "^[0-9T:.-]{10,40}$"
+                  },
+                  "timeZone": {
+                    "type": "string",
+                    "description": "Fuseau, ex. Europe/Paris ou UTC.",
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "dateTime",
+                  "timeZone"
+                ],
+                "additionalProperties": true
+              },
+              "location": {
+                "type": "object",
+                "description": "Lieu.",
+                "properties": {
+                  "displayName": {
+                    "type": "string",
+                    "description": "Nom du lieu.",
+                    "maxLength": 255
+                  }
+                },
+                "additionalProperties": true
+              },
+              "attendees": {
+                "type": "array",
+                "description": "Participants.",
+                "items": {
+                  "type": "object",
+                  "description": "Participant.",
+                  "properties": {
+                    "emailAddress": {
+                      "type": "object",
+                      "description": "Adresse.",
+                      "properties": {
+                        "address": {
+                          "type": "string",
+                          "description": "Adresse e-mail.",
+                          "maxLength": 320
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Nom.",
+                          "maxLength": 256
+                        }
+                      },
+                      "required": [
+                        "address"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "type": {
+                      "type": "string",
+                      "description": "Rôle.",
+                      "enum": [
+                        "required",
+                        "optional",
+                        "resource"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "emailAddress"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "isAllDay": {
+                "type": "boolean",
+                "description": "Journée entière."
+              },
+              "isOnlineMeeting": {
+                "type": "boolean",
+                "description": "Réunion en ligne."
+              },
+              "onlineMeetingProvider": {
+                "type": "string",
+                "description": "Fournisseur.",
+                "enum": [
+                  "teamsForBusiness",
+                  "skypeForBusiness",
+                  "unknown"
+                ]
+              },
+              "reminderMinutesBeforeStart": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 43200,
+                "description": "Rappel en minutes avant le début."
+              },
+              "showAs": {
+                "type": "string",
+                "description": "Disponibilité affichée.",
+                "enum": [
+                  "free",
+                  "tentative",
+                  "busy",
+                  "oof",
+                  "workingElsewhere"
+                ]
+              },
+              "sensitivity": {
+                "type": "string",
+                "description": "Confidentialité.",
+                "enum": [
+                  "normal",
+                  "personal",
+                  "private",
+                  "confidential"
+                ]
+              },
+              "importance": {
+                "type": "string",
+                "description": "Importance.",
+                "enum": [
+                  "low",
+                  "normal",
+                  "high"
+                ]
+              },
+              "categories": {
+                "type": "array",
+                "description": "Catégories.",
+                "items": {
+                  "type": "string",
+                  "description": "Nom.",
+                  "maxLength": 255
+                }
+              },
+              "recurrence": {
+                "type": "object",
+                "description": "Récurrence (patternedRecurrence : pattern + range).",
+                "properties": {
+                  "pattern": {
+                    "type": "object",
+                    "description": "Motif (type daily/weekly/..., interval, daysOfWeek...)."
+                  },
+                  "range": {
+                    "type": "object",
+                    "description": "Plage (type endDate/noEnd/numbered, startDate...)."
+                  }
+                },
+                "additionalProperties": true
+              },
+              "transactionId": {
+                "type": "string",
+                "description": "Identifiant client d'idempotence.",
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "subject",
+              "start",
+              "end"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "event"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/events",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "event"
+      }
+    },
+    {
+      "name": "outlook_update_event",
+      "description": "Modifie un événement (PATCH). Si des participants existent, les mises à jour sont envoyées. Fournir seulement les champs à changer.",
+      "tags": [
+        "calendrier",
+        "envoi",
+        "ecriture"
+      ],
+      "average_response_size": 3000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "Identifiant Graph de l'objet (chaîne base64url, copiée telle quelle d'une réponse précédente).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          },
+          "modification": {
+            "type": "object",
+            "description": "Champs à modifier.",
+            "properties": {
+              "subject": {
+                "type": "string",
+                "description": "Titre.",
+                "maxLength": 512
+              },
+              "body": {
+                "type": "object",
+                "description": "Corps.",
+                "properties": {
+                  "contentType": {
+                    "type": "string",
+                    "description": "Format du corps.",
+                    "enum": [
+                      "Text",
+                      "HTML"
+                    ]
+                  },
+                  "content": {
+                    "type": "string",
+                    "description": "Contenu.",
+                    "maxLength": 4000000
+                  }
+                },
+                "required": [
+                  "contentType",
+                  "content"
+                ],
+                "additionalProperties": true
+              },
+              "start": {
+                "type": "object",
+                "description": "Début.",
+                "properties": {
+                  "dateTime": {
+                    "type": "string",
+                    "description": "Date-heure locale sans décalage, ex. 2026-11-09T14:00:00.",
+                    "pattern": "^[0-9T:.-]{10,40}$"
+                  },
+                  "timeZone": {
+                    "type": "string",
+                    "description": "Fuseau, ex. Europe/Paris ou UTC.",
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "dateTime",
+                  "timeZone"
+                ],
+                "additionalProperties": true
+              },
+              "end": {
+                "type": "object",
+                "description": "Fin.",
+                "properties": {
+                  "dateTime": {
+                    "type": "string",
+                    "description": "Date-heure locale sans décalage, ex. 2026-11-09T14:00:00.",
+                    "pattern": "^[0-9T:.-]{10,40}$"
+                  },
+                  "timeZone": {
+                    "type": "string",
+                    "description": "Fuseau, ex. Europe/Paris ou UTC.",
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "dateTime",
+                  "timeZone"
+                ],
+                "additionalProperties": true
+              },
+              "location": {
+                "type": "object",
+                "description": "Lieu.",
+                "properties": {
+                  "displayName": {
+                    "type": "string",
+                    "description": "Nom du lieu.",
+                    "maxLength": 255
+                  }
+                },
+                "additionalProperties": true
+              },
+              "attendees": {
+                "type": "array",
+                "description": "Participants.",
+                "items": {
+                  "type": "object",
+                  "description": "Participant.",
+                  "properties": {
+                    "emailAddress": {
+                      "type": "object",
+                      "description": "Adresse.",
+                      "properties": {
+                        "address": {
+                          "type": "string",
+                          "description": "Adresse e-mail.",
+                          "maxLength": 320
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Nom.",
+                          "maxLength": 256
+                        }
+                      },
+                      "required": [
+                        "address"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "type": {
+                      "type": "string",
+                      "description": "Rôle.",
+                      "enum": [
+                        "required",
+                        "optional",
+                        "resource"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "emailAddress"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "isAllDay": {
+                "type": "boolean",
+                "description": "Journée entière."
+              },
+              "isOnlineMeeting": {
+                "type": "boolean",
+                "description": "Réunion en ligne."
+              },
+              "onlineMeetingProvider": {
+                "type": "string",
+                "description": "Fournisseur.",
+                "enum": [
+                  "teamsForBusiness",
+                  "skypeForBusiness",
+                  "unknown"
+                ]
+              },
+              "reminderMinutesBeforeStart": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 43200,
+                "description": "Rappel en minutes avant le début."
+              },
+              "showAs": {
+                "type": "string",
+                "description": "Disponibilité affichée.",
+                "enum": [
+                  "free",
+                  "tentative",
+                  "busy",
+                  "oof",
+                  "workingElsewhere"
+                ]
+              },
+              "sensitivity": {
+                "type": "string",
+                "description": "Confidentialité.",
+                "enum": [
+                  "normal",
+                  "personal",
+                  "private",
+                  "confidential"
+                ]
+              },
+              "importance": {
+                "type": "string",
+                "description": "Importance.",
+                "enum": [
+                  "low",
+                  "normal",
+                  "high"
+                ]
+              },
+              "categories": {
+                "type": "array",
+                "description": "Catégories.",
+                "items": {
+                  "type": "string",
+                  "description": "Nom.",
+                  "maxLength": 255
+                }
+              },
+              "recurrence": {
+                "type": "object",
+                "description": "Récurrence (patternedRecurrence : pattern + range).",
+                "properties": {
+                  "pattern": {
+                    "type": "object",
+                    "description": "Motif (type daily/weekly/..., interval, daysOfWeek...)."
+                  },
+                  "range": {
+                    "type": "object",
+                    "description": "Plage (type endDate/noEnd/numbered, startDate...)."
+                  }
+                },
+                "additionalProperties": true
+              },
+              "transactionId": {
+                "type": "string",
+                "description": "Identifiant client d'idempotence.",
+                "maxLength": 64
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "eventId",
+          "modification"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/events/{eventId}",
+        "http_method": "PATCH",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "modification"
+      }
+    },
+    {
+      "name": "outlook_delete_event",
+      "description": "Supprime un événement du calendrier ; 204. Pour un événement dont l'utilisateur est organisateur avec participants, préférer outlook_cancel_event qui envoie l'annulation.",
+      "tags": [
+        "calendrier",
+        "ecriture"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "Identifiant Graph de l'objet (chaîne base64url, copiée telle quelle d'une réponse précédente).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          }
+        },
+        "required": [
+          "eventId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/events/{eventId}",
+        "http_method": "DELETE",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        }
+      }
+    },
+    {
+      "name": "outlook_cancel_event",
+      "description": "Annule une réunion dont l'utilisateur est organisateur et ENVOIE l'annulation aux participants (part réellement) ; 202.",
+      "tags": [
+        "calendrier",
+        "envoi",
+        "ecriture"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "Identifiant Graph de l'objet (chaîne base64url, copiée telle quelle d'une réponse précédente).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          },
+          "cancel": {
+            "type": "object",
+            "description": "Annulation.",
+            "properties": {
+              "comment": {
+                "type": "string",
+                "description": "Message d'annulation.",
+                "maxLength": 10000
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "eventId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/events/{eventId}/cancel",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "cancel"
+      }
+    },
+    {
+      "name": "outlook_accept_event",
+      "description": "Accepte une invitation à une réunion ; avec sendResponse (défaut true) la réponse ENVOYÉE à l'organisateur est réelle ; 202.",
+      "tags": [
+        "calendrier",
+        "envoi",
+        "ecriture"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "Identifiant Graph de l'objet (chaîne base64url, copiée telle quelle d'une réponse précédente).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          },
+          "response": {
+            "type": "object",
+            "description": "Réponse.",
+            "properties": {
+              "comment": {
+                "type": "string",
+                "description": "Commentaire pour l'organisateur.",
+                "maxLength": 10000
+              },
+              "sendResponse": {
+                "type": "boolean",
+                "description": "Envoyer la réponse à l'organisateur (défaut true)."
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "eventId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/events/{eventId}/accept",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "response"
+      }
+    },
+    {
+      "name": "outlook_decline_event",
+      "description": "Refuse une invitation à une réunion ; avec sendResponse (défaut true) la réponse ENVOYÉE à l'organisateur est réelle ; 202.",
+      "tags": [
+        "calendrier",
+        "envoi",
+        "ecriture"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "Identifiant Graph de l'objet (chaîne base64url, copiée telle quelle d'une réponse précédente).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          },
+          "response": {
+            "type": "object",
+            "description": "Réponse.",
+            "properties": {
+              "comment": {
+                "type": "string",
+                "description": "Commentaire pour l'organisateur.",
+                "maxLength": 10000
+              },
+              "sendResponse": {
+                "type": "boolean",
+                "description": "Envoyer la réponse à l'organisateur (défaut true)."
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "eventId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/events/{eventId}/decline",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "response"
+      }
+    },
+    {
+      "name": "outlook_tentatively_accept_event",
+      "description": "Accepte provisoirement une invitation à une réunion ; avec sendResponse (défaut true) la réponse ENVOYÉE à l'organisateur est réelle ; 202.",
+      "tags": [
+        "calendrier",
+        "envoi",
+        "ecriture"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "Identifiant Graph de l'objet (chaîne base64url, copiée telle quelle d'une réponse précédente).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          },
+          "response": {
+            "type": "object",
+            "description": "Réponse.",
+            "properties": {
+              "comment": {
+                "type": "string",
+                "description": "Commentaire pour l'organisateur.",
+                "maxLength": 10000
+              },
+              "sendResponse": {
+                "type": "boolean",
+                "description": "Envoyer la réponse à l'organisateur (défaut true)."
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "eventId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/events/{eventId}/tentativelyAccept",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "response"
+      }
+    },
+    {
+      "name": "outlook_find_meeting_times",
+      "description": "Propose des créneaux de réunion (POST findMeetingTimes) selon participants, durée ISO 8601 (ex. PT1H) et plage de recherche ; renvoie meetingTimeSuggestions avec confiance et disponibilités. Ne crée rien.",
+      "tags": [
+        "calendrier",
+        "lecture"
+      ],
+      "average_response_size": 6000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "object",
+            "description": "Critères.",
+            "properties": {
+              "attendees": {
+                "type": "array",
+                "description": "Participants.",
+                "items": {
+                  "type": "object",
+                  "description": "Participant.",
+                  "properties": {
+                    "emailAddress": {
+                      "type": "object",
+                      "description": "Adresse.",
+                      "properties": {
+                        "address": {
+                          "type": "string",
+                          "description": "Adresse e-mail.",
+                          "maxLength": 320
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Nom.",
+                          "maxLength": 256
+                        }
+                      },
+                      "required": [
+                        "address"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "type": {
+                      "type": "string",
+                      "description": "Rôle.",
+                      "enum": [
+                        "required",
+                        "optional",
+                        "resource"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "emailAddress"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "timeConstraint": {
+                "type": "object",
+                "description": "Contrainte horaire.",
+                "properties": {
+                  "activityDomain": {
+                    "type": "string",
+                    "description": "Domaine.",
+                    "enum": [
+                      "work",
+                      "personal",
+                      "unrestricted"
+                    ]
+                  },
+                  "timeSlots": {
+                    "type": "array",
+                    "description": "Plages de recherche.",
+                    "items": {
+                      "type": "object",
+                      "description": "Plage.",
+                      "properties": {
+                        "start": {
+                          "type": "object",
+                          "description": "Début.",
+                          "properties": {
+                            "dateTime": {
+                              "type": "string",
+                              "description": "Date-heure locale sans décalage, ex. 2026-11-09T14:00:00.",
+                              "pattern": "^[0-9T:.-]{10,40}$"
+                            },
+                            "timeZone": {
+                              "type": "string",
+                              "description": "Fuseau, ex. Europe/Paris ou UTC.",
+                              "maxLength": 80
+                            }
+                          },
+                          "required": [
+                            "dateTime",
+                            "timeZone"
+                          ],
+                          "additionalProperties": true
+                        },
+                        "end": {
+                          "type": "object",
+                          "description": "Fin.",
+                          "properties": {
+                            "dateTime": {
+                              "type": "string",
+                              "description": "Date-heure locale sans décalage, ex. 2026-11-09T14:00:00.",
+                              "pattern": "^[0-9T:.-]{10,40}$"
+                            },
+                            "timeZone": {
+                              "type": "string",
+                              "description": "Fuseau, ex. Europe/Paris ou UTC.",
+                              "maxLength": 80
+                            }
+                          },
+                          "required": [
+                            "dateTime",
+                            "timeZone"
+                          ],
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "start",
+                        "end"
+                      ],
+                      "additionalProperties": true
+                    }
+                  }
+                },
+                "additionalProperties": true
+              },
+              "meetingDuration": {
+                "type": "string",
+                "description": "Durée ISO 8601, ex. PT1H.",
+                "pattern": "^P[T0-9HMS]{2,20}$"
+              },
+              "maxCandidates": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100,
+                "description": "Nombre maximal de suggestions."
+              },
+              "isOrganizerOptional": {
+                "type": "boolean",
+                "description": "Organisateur facultatif."
+              },
+              "returnSuggestionReasons": {
+                "type": "boolean",
+                "description": "Renvoyer les raisons."
+              },
+              "minimumAttendeePercentage": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "Pourcentage minimal de participants disponibles."
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/findMeetingTimes",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "query"
+      }
+    },
+    {
+      "name": "outlook_get_schedule",
+      "description": "Disponibilité (libre/occupé) de personnes ou salles sur une plage : availabilityView (0 libre, 1 provisoire, 2 occupé, 3 absent, 4 ailleurs) et scheduleItems. Ne crée rien. Prefer outlook.timezone pour le fuseau des réponses.",
+      "tags": [
+        "calendrier",
+        "lecture"
+      ],
+      "average_response_size": 6000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "object",
+            "description": "Critères.",
+            "properties": {
+              "schedules": {
+                "type": "array",
+                "description": "Adresses SMTP à interroger.",
+                "items": {
+                  "type": "string",
+                  "description": "Adresse e-mail.",
+                  "maxLength": 320
+                }
+              },
+              "startTime": {
+                "type": "object",
+                "description": "Début.",
+                "properties": {
+                  "dateTime": {
+                    "type": "string",
+                    "description": "Date-heure locale sans décalage, ex. 2026-11-09T14:00:00.",
+                    "pattern": "^[0-9T:.-]{10,40}$"
+                  },
+                  "timeZone": {
+                    "type": "string",
+                    "description": "Fuseau, ex. Europe/Paris ou UTC.",
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "dateTime",
+                  "timeZone"
+                ],
+                "additionalProperties": true
+              },
+              "endTime": {
+                "type": "object",
+                "description": "Fin.",
+                "properties": {
+                  "dateTime": {
+                    "type": "string",
+                    "description": "Date-heure locale sans décalage, ex. 2026-11-09T14:00:00.",
+                    "pattern": "^[0-9T:.-]{10,40}$"
+                  },
+                  "timeZone": {
+                    "type": "string",
+                    "description": "Fuseau, ex. Europe/Paris ou UTC.",
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "dateTime",
+                  "timeZone"
+                ],
+                "additionalProperties": true
+              },
+              "availabilityViewInterval": {
+                "type": "integer",
+                "minimum": 5,
+                "maximum": 1440,
+                "description": "Durée d'un créneau en minutes."
+              }
+            },
+            "required": [
+              "schedules",
+              "startTime",
+              "endTime"
+            ],
+            "additionalProperties": true
+          },
+          "Prefer": {
+            "type": "string",
+            "description": "En-tête Prefer : fuseau des dates renvoyées, ex. outlook.timezone=\"Europe/Paris\" (sinon UTC).",
+            "pattern": "^outlook\\.timezone=\"[A-Za-z0-9_/ +.-]{1,80}\"$",
+            "examples": [
+              "outlook.timezone=\"Europe/Paris\""
+            ]
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/calendar/getSchedule",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "query",
+        "header_fields": [
+          "Prefer"
+        ]
+      }
+    },
+    {
+      "name": "outlook_list_event_instances",
+      "description": "Occurrences d'une série récurrente sur une période (startDateTime et endDateTime obligatoires, ISO 8601). Pagination par `skiptoken`.",
+      "tags": [
+        "calendrier",
+        "lecture"
+      ],
+      "average_response_size": 20000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "Identifiant de l'événement maître de la série.",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          },
+          "startDateTime": {
+            "type": "string",
+            "description": "Début, ISO 8601.",
+            "pattern": "^[0-9T:.+Z-]{10,40}$"
+          },
+          "endDateTime": {
+            "type": "string",
+            "description": "Fin, ISO 8601.",
+            "pattern": "^[0-9T:.+Z-]{10,40}$"
+          },
+          "top": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal d'éléments par page (1 à 100)."
+          },
+          "skiptoken": {
+            "type": "string",
+            "description": "Jeton de page suivante : valeur du paramètre $skiptoken (ou skiptoken) de @odata.nextLink renvoyé par l'appel précédent.",
+            "pattern": "^[A-Za-z0-9_=+/.%-]{1,2000}$"
+          },
+          "select": {
+            "type": "string",
+            "description": "Propriétés à renvoyer, séparées par des virgules (ex. id,subject,start,end). Réduit fortement la taille de la réponse.",
+            "pattern": "^[A-Za-z0-9_@.,/]{1,500}$"
+          },
+          "Prefer": {
+            "type": "string",
+            "description": "En-tête Prefer : fuseau des dates renvoyées, ex. outlook.timezone=\"Europe/Paris\" (sinon UTC).",
+            "pattern": "^outlook\\.timezone=\"[A-Za-z0-9_/ +.-]{1,80}\"$",
+            "examples": [
+              "outlook.timezone=\"Europe/Paris\""
+            ]
+          }
+        },
+        "required": [
+          "eventId",
+          "startDateTime",
+          "endDateTime"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/events/{eventId}/instances",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "header_fields": [
+          "Prefer"
+        ]
+      }
+    },
+    {
+      "name": "outlook_list_contacts",
+      "description": "Liste ou recherche les contacts Outlook (carnet d'adresses personnel). filter OData (ex. startswith(displayName,'Du')) ; `search` n'est pas pris en charge sur les contacts, d'où filter. Pagination par `skip` (ancienne valeur + top).",
+      "tags": [
+        "contact",
+        "lecture"
+      ],
+      "average_response_size": 20000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "top": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal d'éléments par page (1 à 100)."
+          },
+          "skip": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Nombre d'éléments à sauter (pagination : ajouter la taille de page précédente ; Graph renvoie @odata.nextLink absolu dont $skip/$skiptoken se recopient ici)."
+          },
+          "select": {
+            "type": "string",
+            "description": "Propriétés à renvoyer, séparées par des virgules (ex. id,displayName,emailAddresses,mobilePhone,companyName). Réduit fortement la taille de la réponse.",
+            "pattern": "^[A-Za-z0-9_@.,/]{1,500}$"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filtre OData (exclusif avec search), ex. startswith(displayName,'Du') ou emailAddresses/any(a:a/address eq 'x@y.fr')",
+            "maxLength": 1000
+          },
+          "orderby": {
+            "type": "string",
+            "description": "Tri OData, ex. displayName. Ignoré avec search.",
+            "pattern": "^[A-Za-z0-9/, ]{1,200}$",
+            "maxLength": 200
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/contacts",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        }
+      }
+    },
+    {
+      "name": "outlook_get_contact",
+      "description": "Lit un contact (toutes ses coordonnées).",
+      "tags": [
+        "contact",
+        "lecture"
+      ],
+      "average_response_size": 1500,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "contactId": {
+            "type": "string",
+            "description": "Identifiant Graph de l'objet (chaîne base64url, copiée telle quelle d'une réponse précédente).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          },
+          "select": {
+            "type": "string",
+            "description": "Propriétés à renvoyer, séparées par des virgules (ex. id,displayName,emailAddresses,businessPhones). Réduit fortement la taille de la réponse.",
+            "pattern": "^[A-Za-z0-9_@.,/]{1,500}$"
+          }
+        },
+        "required": [
+          "contactId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/contacts/{contactId}",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        }
+      }
+    },
+    {
+      "name": "outlook_create_contact",
+      "description": "Crée un contact dans le dossier de contacts par défaut ; renvoie le contact avec son id.",
+      "tags": [
+        "contact",
+        "ecriture"
+      ],
+      "average_response_size": 1500,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "contact": {
+            "type": "object",
+            "description": "Contact.",
+            "properties": {
+              "givenName": {
+                "type": "string",
+                "description": "Prénom.",
+                "maxLength": 256
+              },
+              "surname": {
+                "type": "string",
+                "description": "Nom.",
+                "maxLength": 256
+              },
+              "displayName": {
+                "type": "string",
+                "description": "Nom affiché.",
+                "maxLength": 256
+              },
+              "emailAddresses": {
+                "type": "array",
+                "description": "Adresses e-mail.",
+                "items": {
+                  "type": "object",
+                  "description": "Adresse.",
+                  "properties": {
+                    "address": {
+                      "type": "string",
+                      "description": "Adresse e-mail.",
+                      "maxLength": 320
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Nom affiché.",
+                      "maxLength": 256
+                    }
+                  },
+                  "required": [
+                    "address"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "businessPhones": {
+                "type": "array",
+                "description": "Téléphones professionnels.",
+                "items": {
+                  "type": "string",
+                  "description": "Numéro.",
+                  "maxLength": 64
+                }
+              },
+              "mobilePhone": {
+                "type": "string",
+                "description": "Mobile.",
+                "maxLength": 64
+              },
+              "companyName": {
+                "type": "string",
+                "description": "Société.",
+                "maxLength": 256
+              },
+              "jobTitle": {
+                "type": "string",
+                "description": "Fonction.",
+                "maxLength": 256
+              },
+              "department": {
+                "type": "string",
+                "description": "Service.",
+                "maxLength": 256
+              },
+              "categories": {
+                "type": "array",
+                "description": "Catégories.",
+                "items": {
+                  "type": "string",
+                  "description": "Nom.",
+                  "maxLength": 255
+                }
+              },
+              "personalNotes": {
+                "type": "string",
+                "description": "Notes.",
+                "maxLength": 10000
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "contact"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/contacts",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "contact"
+      }
+    },
+    {
+      "name": "outlook_update_contact",
+      "description": "Modifie un contact (PATCH) : seuls les champs fournis changent (une liste fournie remplace la liste entière).",
+      "tags": [
+        "contact",
+        "ecriture"
+      ],
+      "average_response_size": 1500,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "contactId": {
+            "type": "string",
+            "description": "Identifiant Graph de l'objet (chaîne base64url, copiée telle quelle d'une réponse précédente).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          },
+          "modification": {
+            "type": "object",
+            "description": "Champs à modifier.",
+            "properties": {
+              "givenName": {
+                "type": "string",
+                "description": "Prénom.",
+                "maxLength": 256
+              },
+              "surname": {
+                "type": "string",
+                "description": "Nom.",
+                "maxLength": 256
+              },
+              "displayName": {
+                "type": "string",
+                "description": "Nom affiché.",
+                "maxLength": 256
+              },
+              "emailAddresses": {
+                "type": "array",
+                "description": "Adresses e-mail.",
+                "items": {
+                  "type": "object",
+                  "description": "Adresse.",
+                  "properties": {
+                    "address": {
+                      "type": "string",
+                      "description": "Adresse e-mail.",
+                      "maxLength": 320
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Nom affiché.",
+                      "maxLength": 256
+                    }
+                  },
+                  "required": [
+                    "address"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "businessPhones": {
+                "type": "array",
+                "description": "Téléphones professionnels.",
+                "items": {
+                  "type": "string",
+                  "description": "Numéro.",
+                  "maxLength": 64
+                }
+              },
+              "mobilePhone": {
+                "type": "string",
+                "description": "Mobile.",
+                "maxLength": 64
+              },
+              "companyName": {
+                "type": "string",
+                "description": "Société.",
+                "maxLength": 256
+              },
+              "jobTitle": {
+                "type": "string",
+                "description": "Fonction.",
+                "maxLength": 256
+              },
+              "department": {
+                "type": "string",
+                "description": "Service.",
+                "maxLength": 256
+              },
+              "categories": {
+                "type": "array",
+                "description": "Catégories.",
+                "items": {
+                  "type": "string",
+                  "description": "Nom.",
+                  "maxLength": 255
+                }
+              },
+              "personalNotes": {
+                "type": "string",
+                "description": "Notes.",
+                "maxLength": 10000
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "contactId",
+          "modification"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/contacts/{contactId}",
+        "http_method": "PATCH",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        },
+        "body_field": "modification"
+      }
+    },
+    {
+      "name": "outlook_delete_contact",
+      "description": "Supprime un contact ; 204.",
+      "tags": [
+        "contact",
+        "ecriture"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "contactId": {
+            "type": "string",
+            "description": "Identifiant Graph de l'objet (chaîne base64url, copiée telle quelle d'une réponse précédente).",
+            "pattern": "^[A-Za-z0-9_=-]{1,512}$"
+          }
+        },
+        "required": [
+          "contactId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/contacts/{contactId}",
+        "http_method": "DELETE",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        }
+      }
+    },
+    {
+      "name": "outlook_list_contact_folders",
+      "description": "Liste les dossiers de contacts (id, displayName). Les contacts d'un autre dossier ne sont pas lus par outlook_list_contacts (dossier par défaut seulement).",
+      "tags": [
+        "contact",
+        "dossier",
+        "lecture"
+      ],
+      "average_response_size": 1500,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "top": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal d'éléments par page (1 à 100)."
+          },
+          "skip": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Nombre d'éléments à sauter (pagination : ajouter la taille de page précédente ; Graph renvoie @odata.nextLink absolu dont $skip/$skiptoken se recopient ici)."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/contactFolders",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        }
+      }
+    },
+    {
+      "name": "outlook_search_people",
+      "description": "Résout un nom ou un alias en personnes pertinentes (contacts, collègues, annuaire) avec scoredEmailAddresses : le moyen de trouver l'adresse d'un correspondant. Recherche floue, triée par pertinence ; skip non pris en charge avec search.",
+      "tags": [
+        "contact",
+        "lecture"
+      ],
+      "average_response_size": 4000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "string",
+            "description": "Nom, prénom ou alias, ex. dupont.",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "top": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal d'éléments par page (1 à 100)."
+          },
+          "select": {
+            "type": "string",
+            "description": "Propriétés à renvoyer, séparées par des virgules (ex. id,displayName,scoredEmailAddresses,jobTitle,companyName). Réduit fortement la taille de la réponse.",
+            "pattern": "^[A-Za-z0-9_@.,/]{1,500}$"
+          }
+        },
+        "required": [
+          "search"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/people",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        }
+      }
+    },
+    {
+      "name": "outlook_get_me",
+      "description": "Profil de l'utilisateur connecté : displayName, mail, userPrincipalName, jobTitle.",
+      "tags": [
+        "courrier",
+        "lecture"
+      ],
+      "average_response_size": 600,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "select": {
+            "type": "string",
+            "description": "Propriétés à renvoyer, séparées par des virgules (ex. displayName,mail,userPrincipalName,jobTitle). Réduit fortement la taille de la réponse.",
+            "pattern": "^[A-Za-z0-9_@.,/]{1,500}$"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        }
+      }
+    },
+    {
+      "name": "outlook_get_mailbox_settings",
+      "description": "Paramètres de la boîte : fuseau horaire, langue, heures de travail, réponse automatique (absence).",
+      "tags": [
+        "courrier",
+        "lecture"
+      ],
+      "average_response_size": 1200,
+      "inputs": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/mailboxSettings",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        }
+      }
+    },
+    {
+      "name": "outlook_list_master_categories",
+      "description": "Liste les catégories de couleur de la boîte (displayName, color), valeurs admises pour `categories` des messages, événements et contacts.",
+      "tags": [
+        "courrier",
+        "lecture"
+      ],
+      "average_response_size": 1500,
+      "inputs": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/outlook/masterCategories",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        }
+      }
+    },
+    {
+      "name": "outlook_list_message_rules",
+      "description": "Liste les règles de boîte de réception d'un dossier (en pratique inbox) : conditions, actions, ordre, isEnabled. Lecture seule.",
+      "tags": [
+        "courrier",
+        "dossier",
+        "lecture"
+      ],
+      "average_response_size": 3000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "folderId": {
+            "type": "string",
+            "description": "Dossier des règles, en pratique inbox.",
+            "pattern": "^(inbox|sentitems|drafts|deleteditems|archive|junkemail|outbox|msgfolderroot|[A-Za-z0-9_=-]{1,512})$"
+          }
+        },
+        "required": [
+          "folderId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${GRAPH_BASE}/me/mailFolders/{folderId}/messageRules",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "api_key",
+          "api_key": "Bearer ${OUTLOOK_GRAPH_TOKEN}",
+          "var_name": "Authorization",
+          "location": "header"
+        }
+      }
+    }
+  ]
+}
